@@ -1,0 +1,23 @@
+{
+  "extraKnownMarketplaces": {
+    "dev-browser-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "sawyerhood/dev-browser"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "dev-browser@dev-browser-marketplace": true
+  },
+  "enabledMcpjsonServers": [
+    "next-devtools-mcp",
+    "playwright"
+  ],
+  "permissions": {
+    "allow": [
+      "mcp__playwright"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}
