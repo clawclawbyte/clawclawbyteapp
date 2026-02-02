@@ -41,6 +41,9 @@ yarn-error.log*
 playwright-report/
 test-results/
 
+# Local settings
+.claude/settings.local.json
+
 # Misc
 *.log
 *.tmp
