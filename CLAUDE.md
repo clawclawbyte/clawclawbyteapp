@@ -155,4 +155,4 @@ Tracer bullets come from the Pragmatic Programmer. When building systems, you wa
 
 ### Cleanup
 
-After you are done, do the necessary steps for cleaning up like stopping the dev servers etc. Always stop the running process on port 8080 for future iterations.
+After you are done, do the necessary steps for cleaning up like stopping the dev servers etc. Always stop the running process on port 3000 for future iterations.
