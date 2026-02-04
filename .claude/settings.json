@@ -1,6 +1,6 @@
 {
   "extraKnownMarketplaces": {
-    "dev-browser-marketplace": {
+    "sawyerhood/dev-browser": {
       "source": {
         "source": "github",
         "repo": "sawyerhood/dev-browser"
