@@ -50,6 +50,7 @@ export interface AgentConnection {
 }
 
 const matches = new Map<string, Match>();
+const pendingSpectators = new Map<string, Set<WebSocket>>();
 
 // Create a new match
 export async function createMatch(matchId: string): Promise<Match> {
@@ -70,6 +71,23 @@ export async function createMatch(matchId: string): Promise<Match> {
   };
 
   matches.set(matchId, match);
+
+  // Attach any spectators that subscribed before the match was created
+  const pending = pendingSpectators.get(matchId);
+  if (pending) {
+    for (const ws of pending) {
+      if (ws.readyState === WebSocket.OPEN) {
+        match.spectators.add(ws);
+        ws.send(JSON.stringify({
+          type: "match_state",
+          status: match.status,
+          agents: getAgentInfos(match),
+        } satisfies ServerToSpectatorMessage));
+      }
+    }
+    pendingSpectators.delete(matchId);
+  }
+
   return match;
 }
 
@@ -363,7 +381,16 @@ async function endMatch(match: Match): Promise<void> {
 export function subscribeSpectator(matchId: string, ws: WebSocket): void {
   const match = matches.get(matchId);
   if (!match) {
-    ws.send(JSON.stringify({ type: "error", message: "Match not found" }));
+    // Match doesn't exist yet — hold this spectator until it's created
+    if (!pendingSpectators.has(matchId)) {
+      pendingSpectators.set(matchId, new Set());
+    }
+    pendingSpectators.get(matchId)!.add(ws);
+
+    // Clean up if this spectator disconnects while pending
+    ws.once("close", () => {
+      pendingSpectators.get(matchId)?.delete(ws);
+    });
     return;
   }
 
