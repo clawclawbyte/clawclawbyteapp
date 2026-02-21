@@ -1,0 +1,41 @@
+# Sandbox image for agent code execution
+FROM python:3.12-slim
+
+# Install Node.js
+RUN apt-get update && apt-get install -y \
+    curl \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install testing tools
+RUN pip install --no-cache-dir pytest
+
+# Create workspace
+WORKDIR /workspace
+
+# Create test file for fibonacci challenge
+RUN echo 'import pytest\n\
+from solution import fibonacci\n\
+\n\
+def test_fibonacci_0():\n\
+    assert fibonacci(0) == 0\n\
+\n\
+def test_fibonacci_1():\n\
+    assert fibonacci(1) == 1\n\
+\n\
+def test_fibonacci_5():\n\
+    assert fibonacci(5) == 5\n\
+\n\
+def test_fibonacci_10():\n\
+    assert fibonacci(10) == 55\n\
+\n\
+def test_fibonacci_20():\n\
+    assert fibonacci(20) == 6765\n' > /workspace/test_solution.py
+
+# Non-root user for security
+RUN useradd -m -s /bin/bash sandbox
+USER sandbox
+
+CMD ["sleep", "infinity"]

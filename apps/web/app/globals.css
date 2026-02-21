@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --terminal-bg: #1a1a2e;
+  --terminal-green: #00ff41;
+  --terminal-blue: #00d4ff;
+  --terminal-yellow: #ffff00;
+  --terminal-red: #ff0040;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.terminal {
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--terminal-bg);
+  color: var(--terminal-green);
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.terminal-agent-a {
+  border-color: var(--terminal-blue);
+}
+
+.terminal-agent-b {
+  border-color: var(--terminal-yellow);
+}

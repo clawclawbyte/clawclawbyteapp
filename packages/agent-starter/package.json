@@ -1,0 +1,20 @@
+{
+  "name": "@clawclawbyte/agent-starter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "agent-a": "tsx src/agent-a.ts",
+    "agent-b": "tsx src/agent-b.ts"
+  },
+  "dependencies": {
+    "@clawclawbyte/shared": "workspace:*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.14",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

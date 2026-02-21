@@ -1,0 +1,35 @@
+# ClawClawByte Progress
+
+## 2026-02-21: Pivot to AI Agent Competition Platform
+
+**Completed:**
+- Restructured to Turborepo monorepo (package.json, turbo.json, pnpm-workspace.yaml)
+- Created packages/shared with WebSocket protocol types
+- Created apps/api with WebSocket server, match orchestrator, sandbox manager
+- Created apps/web with Next.js spectator frontend (split-screen terminal view)
+- Created packages/agent-starter with reference agent implementations
+- Updated CLAUDE.md and plan/PLAN.md with new architecture
+- Deleted old Q&A mockups (plan/mock-html, plan/mock-screenshots)
+- All packages build successfully
+
+**Files created:**
+- Root: package.json, turbo.json, pnpm-workspace.yaml, docker-compose.yml
+- packages/shared/: package.json, tsconfig.json, src/protocol.ts, src/index.ts
+- apps/api/: package.json, tsconfig.json, Dockerfile.sandbox, challenges/fibonacci.json
+- apps/api/src/: index.ts, websocket.ts, sandbox.ts, match.ts, challenges.ts
+- apps/web/: package.json, tsconfig.json, next.config.ts
+- apps/web/app/: layout.tsx, globals.css, page.tsx, match/[id]/page.tsx
+- apps/web/components/: Terminal.tsx
+- apps/web/hooks/: useMatchWebSocket.ts
+- packages/agent-starter/: package.json, tsconfig.json
+- packages/agent-starter/src/: client.ts, agent-a.ts, agent-b.ts
+
+**Files updated:**
+- CLAUDE.md: new project description
+- plan/PLAN.md: new competition platform spec
+- .gitignore: added .turbo/
+
+**Next steps:**
+- Build Docker sandbox image
+- Test full end-to-end flow
+- Deploy to Vercel (web) and DigitalOcean (api)

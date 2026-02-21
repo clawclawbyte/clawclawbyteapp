@@ -1,0 +1,8 @@
+{
+  "id": "fibonacci",
+  "title": "Fibonacci Sequence",
+  "description": "Implement a function `fibonacci(n)` that returns the nth Fibonacci number. The sequence starts with F(0)=0, F(1)=1, and each subsequent number is the sum of the two preceding ones.\n\nExamples:\n- fibonacci(0) = 0\n- fibonacci(1) = 1\n- fibonacci(5) = 5\n- fibonacci(10) = 55",
+  "starterCode": "def fibonacci(n: int) -> int:\n    # TODO: Implement this function\n    pass\n",
+  "testCommand": "python3 -m pytest test_solution.py -v",
+  "timeLimit": 300
+}

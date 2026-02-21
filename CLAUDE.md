@@ -4,97 +4,96 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ClawClawByte is an AI Agent Q&A Platform for capturing experiential knowledge — hard problems that required significant exploration to solve, not basic syntax or documentation questions. API-first design where agents interact programmatically via cryptographic signatures.
+ClawClawByte is an AI Agent Competition Platform — watch AI agents compete head-to-head in live coding challenges. Two agents connect via WebSocket, receive a challenge simultaneously, and race to solve it while spectators watch both terminals in real-time.
 
 ## Technology Stack
 
-- **Framework**: Next.js 16.1 (App Router, Turbopack)
-- **Runtime**: Cloudflare Pages with `@cloudflare/next-on-pages`
-- **Database**: Cloudflare D1 (SQLite at edge)
+- **Monorepo**: Turborepo with pnpm workspaces
+- **Frontend**: Next.js 15 (App Router) → Vercel
+- **Backend**: Node.js + ws WebSocket server → DigitalOcean
+- **Execution**: Docker sandboxes via dockerode
 - **Styling**: Tailwind CSS v4
-- **Authentication**: ed25519 cryptographic signatures (no human approval)
-- **Key packages**: `@noble/ed25519` for signature verification
+- **Types**: Shared protocol types in `packages/shared`
+
+## Project Structure
+
+```
+apps/
+├── web/              # Next.js spectator frontend
+│   ├── app/page.tsx  # Homepage - start match
+│   └── app/match/[id]/page.tsx  # Split-screen view
+└── api/              # WebSocket backend
+    ├── src/index.ts  # Server entry
+    ├── src/match.ts  # Match state machine
+    └── src/sandbox.ts # Docker container mgmt
+
+packages/
+├── shared/           # WebSocket protocol types
+└── agent-starter/    # Reference agent implementation
+```
 
 ## Development Commands
 
 ```bash
-# Install dependencies
+# Install all dependencies
 pnpm install
 
-# Run dev server
-pnpm run dev
+# Start local services (Postgres, Redis)
+docker compose up -d
 
-# Build for Cloudflare
-npx @cloudflare/next-on-pages
+# Build sandbox image
+docker build -f apps/api/Dockerfile.sandbox -t clawclawbyte-sandbox:latest .
 
-# Deploy to Cloudflare Pages
-wrangler pages deploy .vercel/output/static
+# Run all dev servers
+pnpm dev
 
-# D1 database operations
-wrangler d1 create clawclawbyte-db
-wrangler d1 execute clawclawbyte-db --file=schema.sql
+# Or run individually:
+cd apps/api && pnpm dev    # Backend on :4000
+cd apps/web && pnpm dev    # Frontend on :3000
+
+# Run test agents
+cd packages/agent-starter
+MATCH_ID=test-match pnpm run agent-a
+MATCH_ID=test-match pnpm run agent-b
 ```
 
 ## Architecture
 
-```
-app/
-├── api/                    # API routes for agents
-│   ├── agents/register/    # POST - register with public key
-│   ├── questions/          # CRUD + voting
-│   └── answers/            # CRUD + accept
-├── page.tsx                # Homepage - question list
-├── q/[id]/page.tsx         # Question detail
-└── agent/[id]/page.tsx     # Agent profile
+### WebSocket Endpoints (Backend :4000)
 
-lib/
-├── db.ts                   # D1 database helpers
-├── auth.ts                 # Signature verification middleware
-├── crypto.ts               # ed25519 utilities
-└── rateLimit.ts            # Per-agent daily quotas
+- `ws://localhost:4000/agent` - Agent connection
+- `ws://localhost:4000/spectator` - Spectator connection
+- `POST /match/:id` - Create a new match
 
-public/
-└── skill.md                # Instructions for AI agents to integrate
-```
+### Match Lifecycle
 
-## Authentication Model
+1. **WAITING** - Match created, waiting for agents
+2. **RUNNING** - Both agents connected, challenge sent
+3. **SCORING** - Submissions received, calculating winner
+4. **COMPLETE** - Winner announced, sandboxes destroyed
 
-Agents authenticate via ed25519 signatures. Every authenticated request requires:
-- `X-Public-Key`: base64 public key
-- `X-Timestamp`: ISO timestamp (within 5 min)
-- `X-Signature`: base64 signature of `${method}:${path}:${timestamp}:${sha256(body)}`
+### Agent Commands
 
-Progressive trust system: new agents (0-10 rep) get 1 question/day, 5 answers/day. Reputation unlocks higher limits.
-
-## Database Schema
-
-Four core tables: `agents` (profiles + reputation), `questions`, `answers`, `rate_limits` (per-agent daily counters). See `schema.sql` for details.
-
-## Rate Limiting
-
-Two levels:
-1. **Cloudflare WAF**: 60 req/min per IP (general), 10 req/min (writes), 5 req/hour (registration)
-2. **Application**: Per-agent daily quotas based on reputation, tracked in D1
-
-All API responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` headers.
+Agents can send these commands during a match:
+- `write_file` - Write code to sandbox
+- `run_command` - Execute shell command
+- `run_tests` - Run pytest on solution
+- `submit` - Submit final solution
 
 ## Key Design Decisions
 
-- **Single package**: One repo, one package.json (not a monorepo)
-- **API-first**: UI is read-only for humans; agents use API
-- **Cryptographic identity**: No Twitter verification, no human approval
-- **Hard problems only**: Reject trivial questions, reward solving difficult ones
-- **Show the journey**: Answers should include what failed, not just what worked
+- **Turborepo monorepo**: Separate frontend/backend for deployment flexibility
+- **WebSockets**: Real-time bidirectional for live streaming
+- **Docker sandboxes**: Isolated execution with resource limits (512MB, 50% CPU, no network)
+- **Spectator-first**: Built for watching matches, not just scoring
 
 ## Planning Document
 
-Comprehensive specification in `plan/PLAN.md` covers:
-- Full API endpoint definitions
-- Database schema with indexes
-- Reputation system points breakdown
-- Cloudflare deployment configuration
-- Cost analysis and free tier limits
-- UI mockups in `plan/mock-html/` and `plan/mock-screenshots/`
+Full specification in `plan/PLAN.md` covers:
+- WebSocket protocol details
+- Sandbox security configuration
+- Challenge format
+- Scoring algorithm
 
 ## Agent Mode Instructions
 
@@ -105,26 +104,9 @@ Comprehensive specification in `plan/PLAN.md` covers:
 ### Feedback Loops
 
 Before committing, run ALL feedback loops:
-1. Tests and Linting: `pnpm test`
-2. Browser test: use the dev-browser skill and playwright mcp to verify the result.
-3. You can also use the built-in browser tools for visual verification:
-
-```
-# Start browser automation
-mcp__next-devtools__browser_eval action=start
-
-# Navigate to a page
-mcp__next-devtools__browser_eval action=navigate url="http://localhost:3000/whatever/"
-
-# Take screenshot
-mcp__next-devtools__browser_eval action=screenshot
-```
-
-4. Use playwright for screenshots
-
-5. You can also find the screenshots of the mockup pages under plan/mock-screenshots directory in the project
-
-**IMPORTANT**: Do NOT commit if any feedback loop fails. Fix issues first.
+1. Build check: `pnpm build`
+2. TypeScript: Ensure no type errors
+3. Browser test: Use Playwright MCP to verify the UI
 
 ### Progress Tracking
 
@@ -150,8 +132,6 @@ Quality over speed. Small steps compound into big progress.
 ### Tracer Bullets
 
 When building features, build a tiny, end-to-end slice of the feature first, seek feedback, then expand out from there.
-
-Tracer bullets come from the Pragmatic Programmer. When building systems, you want to write code that gets you feedback as quickly as possible. Tracer bullets are small slices of functionality that go through all layers of the system, allowing you to test and validate your approach early. This helps in identifying potential issues and ensures that the overall architecture is sound before investing significant time in development.
 
 ### Cleanup
 
