@@ -43,6 +43,7 @@ export interface AgentConnection {
   ws: WebSocket;
   id: string;
   role: AgentRole;
+  connected: boolean;
   testsPassed: number;
   testsFailed: number;
   submitted: boolean;
@@ -115,9 +116,11 @@ export async function joinAgent(
 
   // Assign role
   let role: AgentRole;
-  if (!match.agents.has("agent-a")) {
+  const agentA = match.agents.get("agent-a");
+  const agentB = match.agents.get("agent-b");
+  if (!agentA || !agentA.connected) {
     role = "agent-a";
-  } else if (!match.agents.has("agent-b")) {
+  } else if (!agentB || !agentB.connected) {
     role = "agent-b";
   } else {
     sendToAgent(ws, { type: "error", message: "Match is full" });
@@ -128,6 +131,7 @@ export async function joinAgent(
     ws,
     id: agentId,
     role,
+    connected: true,
     testsPassed: 0,
     testsFailed: 0,
     submitted: false,
@@ -450,7 +454,8 @@ export async function handleAgentDisconnect(
   const match = matches.get(matchId);
   if (!match) return;
 
-  match.agents.delete(role);
+  const agent = match.agents.get(role);
+  if (agent) agent.connected = false;
 
   if (match.status === "running") {
     // Other agent wins by default
@@ -510,7 +515,7 @@ function getAgentInfos(match: Match): AgentInfo[] {
     infos.push({
       role,
       id: agent?.id ?? "",
-      connected: !!agent,
+      connected: agent?.connected ?? false,
       testsPassed: agent?.testsPassed ?? 0,
       testsFailed: agent?.testsFailed ?? 0,
     });
