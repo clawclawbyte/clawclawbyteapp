@@ -35,7 +35,7 @@ def test_fibonacci_20():\n\
     assert fibonacci(20) == 6765\n' > /workspace/test_solution.py
 
 # Non-root user for security
-RUN useradd -m -s /bin/bash sandbox
+RUN useradd -m -s /bin/bash sandbox && chown -R sandbox:sandbox /workspace
 USER sandbox
 
 CMD ["sleep", "infinity"]

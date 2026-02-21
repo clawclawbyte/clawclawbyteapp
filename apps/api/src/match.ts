@@ -18,6 +18,14 @@ import {
 } from "./sandbox.js";
 import { loadChallenge } from "./challenges.js";
 
+export interface TerminalEvent {
+  type: "terminal_output" | "agent_command";
+  agent: AgentRole;
+  output?: string;
+  command?: AgentCommand;
+  timestamp: number;
+}
+
 export interface Match {
   id: string;
   status: MatchStatus;
@@ -27,6 +35,8 @@ export interface Match {
   spectators: Set<WebSocket>;
   scores: MatchScores;
   commandCounts: { "agent-a": number; "agent-b": number };
+  terminalHistory: TerminalEvent[];
+  winner?: AgentRole | "draw";
 }
 
 export interface AgentConnection {
@@ -56,6 +66,7 @@ export async function createMatch(matchId: string): Promise<Match> {
       "agent-b": { testsPassed: 0, timeElapsed: 0, commandsUsed: 0 },
     },
     commandCounts: { "agent-a": 0, "agent-b": 0 },
+    terminalHistory: [],
   };
 
   matches.set(matchId, match);
@@ -107,7 +118,13 @@ export async function joinAgent(
   match.agents.set(role, connection);
 
   // Create sandbox for this agent
-  await createSandbox(matchId, role);
+  try {
+    await createSandbox(matchId, role);
+  } catch (err) {
+    match.agents.delete(role);
+    sendToAgent(ws, { type: "error", message: `Failed to create sandbox: ${String(err)}` });
+    return null;
+  }
 
   // Send connected message
   sendToAgent(ws, { type: "connected", role, matchId });
@@ -184,12 +201,15 @@ export async function handleAgentCommand(
 
   match.commandCounts[role]++;
 
-  // Broadcast command to spectators
+  const commandTimestamp = Date.now();
+
+  // Store in history and broadcast to spectators
+  match.terminalHistory.push({ type: "agent_command", agent: role, command, timestamp: commandTimestamp });
   broadcastToSpectators(match, {
     type: "agent_command",
     agent: role,
     command,
-    timestamp: Date.now(),
+    timestamp: commandTimestamp,
   });
 
   let output = "";
@@ -273,12 +293,14 @@ export async function handleAgentCommand(
   // Send output back to agent
   sendToAgent(agent.ws, { type: "command_output", output, exitCode });
 
-  // Broadcast terminal output to spectators
+  // Store in history and broadcast terminal output to spectators
+  const outputTimestamp = Date.now();
+  match.terminalHistory.push({ type: "terminal_output", agent: role, output, timestamp: outputTimestamp });
   broadcastToSpectators(match, {
     type: "terminal_output",
     agent: role,
     output,
-    timestamp: Date.now(),
+    timestamp: outputTimestamp,
   });
 }
 
@@ -315,6 +337,7 @@ async function endMatch(match: Match): Promise<void> {
   }
 
   match.status = "complete";
+  match.winner = winner;
 
   // Notify agents
   for (const [, agent] of match.agents) {
@@ -354,6 +377,34 @@ export function subscribeSpectator(matchId: string, ws: WebSocket): void {
       agents: getAgentInfos(match),
     } satisfies ServerToSpectatorMessage)
   );
+
+  // Replay terminal history for late-joining spectators
+  for (const event of match.terminalHistory) {
+    if (event.type === "terminal_output") {
+      ws.send(JSON.stringify({
+        type: "terminal_output",
+        agent: event.agent,
+        output: event.output ?? "",
+        timestamp: event.timestamp,
+      } satisfies ServerToSpectatorMessage));
+    } else if (event.type === "agent_command") {
+      ws.send(JSON.stringify({
+        type: "agent_command",
+        agent: event.agent,
+        command: event.command!,
+        timestamp: event.timestamp,
+      } satisfies ServerToSpectatorMessage));
+    }
+  }
+
+  // If match is already complete, send the final result
+  if (match.status === "complete" && match.winner !== undefined) {
+    ws.send(JSON.stringify({
+      type: "match_end",
+      winner: match.winner,
+      scores: match.scores,
+    } satisfies ServerToSpectatorMessage));
+  }
 }
 
 // Remove spectator

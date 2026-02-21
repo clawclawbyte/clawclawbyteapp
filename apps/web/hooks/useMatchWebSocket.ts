@@ -26,6 +26,7 @@ interface MatchState {
 
 export function useMatchWebSocket(matchId: string) {
   const wsRef = useRef<WebSocket | null>(null);
+  const unmountedRef = useRef(false);
   const [connected, setConnected] = useState(false);
   const [state, setState] = useState<MatchState>({
     status: "waiting",
@@ -40,14 +41,17 @@ export function useMatchWebSocket(matchId: string) {
     wsRef.current = ws;
 
     ws.onopen = () => {
+      if (wsRef.current !== ws) return; // superseded by a newer connection
       setConnected(true);
       ws.send(JSON.stringify({ type: "subscribe", matchId }));
     };
 
     ws.onclose = () => {
+      if (wsRef.current !== ws) return; // superseded by a newer connection
       setConnected(false);
-      // Reconnect after delay
-      setTimeout(connect, 2000);
+      if (!unmountedRef.current) {
+        setTimeout(connect, 2000);
+      }
     };
 
     ws.onerror = () => {
@@ -109,9 +113,11 @@ export function useMatchWebSocket(matchId: string) {
   }, [matchId]);
 
   useEffect(() => {
+    unmountedRef.current = false;
     connect();
 
     return () => {
+      unmountedRef.current = true;
       wsRef.current?.close();
     };
   }, [connect]);
